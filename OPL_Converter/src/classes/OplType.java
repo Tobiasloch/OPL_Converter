@@ -1,21 +1,38 @@
 package classes;
 
+import java.util.ArrayList;
+
 public class OplType {
 	
 	private String type;
-	private String typeName;
-	private long typeID;
+	private ArrayList<OblTypeElement> elements;
 	
-	OplType(String type, String typeName, long typeID) {
+	OplType(String type, OblTypeElement element) {
 		this.type = type;
-		this.typeName = typeName;
-		this.typeID = typeID;
+		elements = new ArrayList<OblTypeElement>();
+		
+		if (element != null) elements.add(element);
+	}
+	
+	OplType(String type) {
+		this(type, null);
 	}
 	
 	OplType() {
-		this("", "", 0);
+		this("");
 	}
 	
+	public void addElement(OblTypeElement element) {
+		this.elements.add(element);
+	}
+	
+	public void addElement() {
+		addElement(new OblTypeElement());
+	}
+	
+	public OblTypeElement getActiveElement() {
+		return elements.get(elements.size()-1);
+	}
 	
 	public String getType() {
 		return type;
@@ -23,17 +40,12 @@ public class OplType {
 	public void setType(String type) {
 		this.type = type;
 	}
-	public String getTypeName() {
-		return typeName;
+
+	public ArrayList<OblTypeElement> getElements() {
+		return elements;
 	}
-	public void setTypeName(String typeName) {
-		this.typeName = typeName;
+
+	public void setElements(ArrayList<OblTypeElement> elements) {
+		this.elements = elements;
 	}
-	public long getTypeID() {
-		return typeID;
-	}
-	public void setTypeID(long typeID) {
-		this.typeID = typeID;
-	}
-	
 }

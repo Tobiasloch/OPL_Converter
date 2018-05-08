@@ -18,10 +18,11 @@ public class OplHeader {
 	 * 102: OplFile, does not exist
 	 * 103: Es wurden nicht 4 Gruppen durch den Matcher gefunden
 	 * 104: die ID konnte nicht geladen werden
+	 * 105: kein Header wurde gefunden
 	 * 
 	 * */
 	
-	final String HEADER_REG_EX = "\\d{10} \\S+\\p{Blank}*"
+	public static final String HEADER_REG_EX = "\\d{10} \\S+\\p{Blank}*"
 			+ "\\d{10}(?<fileInformation>(?:\\s\\S+)+) "
 			+ "\\p{Blank}*\\d{10}(?:\\s\\S+)+ "
 			+ "\\p{Blank}*\\d{10} \\d{10} \\d{10}(?<typeName>(?:\\s\\S+)+) "
@@ -34,18 +35,18 @@ public class OplHeader {
 	
 	Console console; // optional: Konsole
 	
-	OplHeader() {
+	public OplHeader() {
 		this(new File(""));
 	}
 	
-	OplHeader(File OplFile) {
+	public OplHeader(File OplFile) {
 		this.OplFile = OplFile;
 		
 		types = new ArrayList<OplType>();
 		console = new Console();
 	}
 	
-	OplHeader(File OplFile, Console console) {
+	public OplHeader(File OplFile, Console console) {
 		this(OplFile);
 		
 		this.console = console;
@@ -58,6 +59,26 @@ public class OplHeader {
 			console.printConsoleErrorLine("Es wurde keine Opl Datei angegeben!", 100);
 			return 100;
 		}
+	}
+	
+	public int getTypeIndex(String type) {
+		int index = 0;
+		for (OplType item : types) {
+			if (type.equals(item.getType())) {
+				return index;
+			}
+			index++;
+		}
+		
+		return -1;
+	}
+	
+	public OplType getType(String type) {
+		int index = getTypeIndex(type);
+		
+		if (index < 0) return null;
+		
+		return types.get(index);
 	}
 	
 	/**
@@ -97,7 +118,10 @@ public class OplHeader {
 				lineCounter++;
 				
 				if (m.find()) {
-					if (startHeader == -1) startHeader = lineCounter;
+					if (startHeader == -1) {
+						startHeader = lineCounter;
+						foundHeader = true;
+					}
 					
 					// überprüft ob genug Daten gefunden wurden
 					if (m.groupCount() != 4) {
@@ -109,13 +133,13 @@ public class OplHeader {
 					// load file Information
 					fileInformation = m.group(1);
 					
-					OplType type = new OplType();
+					OblTypeElement element = new OblTypeElement();
 					
 					// load typeName
-					type.setTypeName(m.group(2));
+					element.setName(m.group(2));
 					
 					// load type
-					type.setType(m.group(3));
+					String type = m.group(3);
 					
 					// load type ID
 					long id = 0;
@@ -128,23 +152,68 @@ public class OplHeader {
 						nfe.printStackTrace();
 						return 104;
 					}
+					element.setId(id);
 					
-					type.setTypeID(id);
 					
-					types.add(type);
+					OplType typeObject = getType(type);
+					
+					if (typeObject == null) {
+						typeObject = new OplType(type);
+						types.add(typeObject);
+					}
+					
+					element.setType(typeObject);
+					typeObject.addElement(element);
 				} else if (foundHeader) {
 					console.printConsoleLine("Der Header wurde von Zeile " + startHeader 
-							+ " bis Zeile " + --lineCounter + "ausgelesen");
+							+ " bis Zeile " + --lineCounter + " ausgelesen");
 					break;
 				}
 			}
 		} catch (IOException e) {
 			console.printConsoleErrorLine("Es Gab ein Problem mit dem Lesen der Datei!", 101);
+			
 			e.printStackTrace();
 			
 			return 101;
 		}
 		
+		if (!foundHeader) {
+			console.printConsoleErrorLine("Es wurde kein Headerblock gefunden!", 105);
+		}
+		
 		return 0;
+	}
+
+	public ArrayList<OplType> getTypes() {
+		return types;
+	}
+
+	public void setTypes(ArrayList<OplType> types) {
+		this.types = types;
+	}
+
+	public String getFileInformation() {
+		return fileInformation;
+	}
+
+	public void setFileInformation(String fileInformation) {
+		this.fileInformation = fileInformation;
+	}
+
+	public File getOplFile() {
+		return OplFile;
+	}
+
+	public void setOplFile(File oplFile) {
+		OplFile = oplFile;
+	}
+
+	public Console getConsole() {
+		return console;
+	}
+
+	public void setConsole(Console console) {
+		this.console = console;
 	}
 }

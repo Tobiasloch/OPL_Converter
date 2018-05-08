@@ -33,7 +33,7 @@ public class Console {
 	}
 	
 	public void printConsoleLine(String text) {
-		printConsole("\n" + text);
+		printConsole(text + "\n");
 	}
 	
 	public void printConsoleError(String text, int errorcode) {
@@ -44,7 +44,7 @@ public class Console {
 	}
 	
 	public void printConsoleErrorLine(String text, int errorcode) {
-		printConsoleError("\n" + text, errorcode);
+		printConsoleError(text + "\n", errorcode);
 	}
 	
 	public void scrollDown() {
