@@ -12,7 +12,12 @@ import classes.OplHeader;
 import classes.OplType;
 
 class OplHeaderTest {
-
+	
+	/*
+	 *	WEitere Tests müssen noch durchgeführt werden 
+	 */
+	
+	
 	@Test
 	void headerFound() {
 		OplHeader header = new OplHeader(new File("C:\\Users\\T.loch\\Desktop\\OPL Dateien Konvertieren\\22_325_2017.09.27_07-00_2017.09.27_13-00.opl"));

@@ -1,6 +1,7 @@
 package classes;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -29,6 +30,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.awt.event.ActionEvent;
@@ -42,7 +44,12 @@ import javax.swing.JSpinner;
 import javax.swing.SwingConstants;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
+import javax.swing.ScrollPaneConstants;
 
 @SuppressWarnings("serial")
 public class mainWindow extends JFrame {
@@ -64,6 +71,8 @@ public class mainWindow extends JFrame {
 	private JTextField inputField;
 	private JTable table;
 	private DefaultTableModel tableModel;
+	
+	private JFrame mainFrame = this;
 	
 	public mainWindow() {
 		setTitle("Dateitrennsystem");
@@ -166,11 +175,53 @@ public class mainWindow extends JFrame {
 		});
 		inputPanel.add(btnDurchsuchen, BorderLayout.EAST);
 		
-		inputField = new JTextField();
+		inputField = new JTextField("D:\\OneDrive - Technische Universität Berlin\\Schlothauer und Wauer\\Studentenjob\\22_325_2017.09.27_07-00_2017.09.27_13-00.opl");
 		inputPanel.add(inputField, BorderLayout.CENTER);
 		inputField.setColumns(10);
 		
 		JButton btnTabelleRendern = new JButton("Tabelle rendern");
+		btnTabelleRendern.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				File file = new File(inputField.getText());
+				DefaultTableModel tableModel = new DefaultTableModel();
+				table.setModel(tableModel);
+				
+				if (file.exists()) {
+					OplHeader header = new OplHeader(file, console);
+					
+					header.extractHeaderInformation();
+					for (OplType item : header.types) {
+						System.out.println(item.getType());
+						tableModel.addColumn(item.getType());
+						
+						if (item.getElements().size() > 0) {
+							int activeCol = tableModel.getColumnCount()-1;
+							
+							int activeRow = 0;
+							for (OblTypeElement elem : item.getElements()) {
+								String text = elem.getName() + "(" + elem.getId() + ")";
+								
+								if (activeRow >= tableModel.getRowCount()) {
+									String[] s = new String[tableModel.getColumnCount()];
+									s[activeCol] = text;
+									
+									//System.out.println(item.getElements());
+									tableModel.addRow(s);
+								} else {
+									tableModel.setValueAt(text, activeRow, activeCol);
+								}
+								
+								activeRow++;
+							}
+						}
+					}
+					table.repaint();
+				} else {
+					JOptionPane.showConfirmDialog(mainFrame, "Die angegebene Datei existiert nicht!", "Fehler!", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+			}
+		});
 		inputPanel.add(btnTabelleRendern, BorderLayout.SOUTH);
 		/*inputField.getDocument().addDocumentListener(new DocumentListener() { Needs to be fixed
 			@Override
@@ -211,10 +262,15 @@ public class mainWindow extends JFrame {
 		
 		tableModel = new DefaultTableModel();
 		table = new JTable(tableModel);
+		table.setCellSelectionEnabled(true);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		table.setSurrendersFocusOnKeystroke(true);
 		
 		table.setColumnSelectionAllowed(true);
 		table.setFillsViewportHeight(true);
-		tableRenderer.add(table, BorderLayout.CENTER);
+		
+		JScrollPane tableRendererScroller = new JScrollPane(table);
+		tableRenderer.add(tableRendererScroller, BorderLayout.CENTER);
 		
 		JPanel settingsPanel = new JPanel();
 		splitPane_2.setRightComponent(settingsPanel);
@@ -246,6 +302,11 @@ public class mainWindow extends JFrame {
 		buttonPanel.setLayout(new BorderLayout(0, 0));
 		
 		startButton = new JButton("Start");
+		startButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				
+			}
+		});
 		buttonPanel.add(startButton);
 		
 		JButton clearConsole = new JButton ("leere Konsole");
@@ -285,6 +346,18 @@ public class mainWindow extends JFrame {
 		
 		return str;
 	}
+	
+	public TableColumn[] getColumnsInView(JTable table) {
+	    TableColumn[] result = new TableColumn[table.getColumnCount()];
+
+	    // Use an enumeration
+	    Enumeration e = table.getColumnModel().getColumns();
+	    for (int i = 0; e.hasMoreElements(); i++) {
+	      result[i] = (TableColumn) e.nextElement();
+	    }
+
+	    return result;
+	  }
 	
 	private void enableAllChildren(Container c, boolean value) {
 		for (Component comp : getAllComponents(c)) comp.setEnabled(value);

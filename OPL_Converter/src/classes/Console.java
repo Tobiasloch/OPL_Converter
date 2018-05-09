@@ -27,7 +27,7 @@ public class Console {
 	
 	public void printConsole(String text) {
 		console.setText(console.getText() + text);
-		System.out.print(text);
+		System.out.print("Konsole: " + text);
 		
 		scrollDown();
 	}
@@ -38,7 +38,7 @@ public class Console {
 	
 	public void printConsoleError(String text, int errorcode) {
 		console.setText(console.getText() +  text + " (errorcode: " + errorcode + ")");
-		System.err.print(text);
+		System.err.print("Konsole: " + text);
 		
 		scrollDown();
 	}
