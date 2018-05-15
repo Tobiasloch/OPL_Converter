@@ -39,7 +39,7 @@ public class mainWindow extends JFrame {
 	/* errorcodes 1 - 99
 	 * 0: no error
 	 * 
-	 * 1: outputFile error
+	 * 1: file input error
 	 * 2: already running process
 	 * 
 	 * */
@@ -163,12 +163,15 @@ public class mainWindow extends JFrame {
 				if (f.exists()) fc.setCurrentDirectory(f);
 				
 				fc.showSaveDialog(null);
-				if (fc.getSelectedFile() != null) inputField.setText(fc.getSelectedFile().getPath());
+				if (fc.getSelectedFile() != null) {
+					inputField.setText(fc.getSelectedFile().getPath());
+					if (outputinInputFolder.isSelected()) outputField.setText(fc.getSelectedFile().getParentFile().getPath() + "\\" + DEFAULT_OUTPUT_NAME);
+				}
 			}
 		});
 		inputPanel.add(btnDurchsuchen, BorderLayout.EAST);
 		
-		inputField = new JTextField("C:\\Users\\T.loch\\Desktop\\OPL Dateien Konvertieren\\22_325_2017.09.27_07-00_2017.09.27_13-00.opl");
+		inputField = new JTextField();
 		inputPanel.add(inputField, BorderLayout.CENTER);
 		inputField.setColumns(10);
 		
@@ -208,7 +211,8 @@ public class mainWindow extends JFrame {
 					}
 					table.repaint();
 				} else {
-					JOptionPane.showConfirmDialog(mainFrame, "Die angegebene Datei existiert nicht!", "Fehler!", JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(mainFrame, "Die angegebene Datei existiert nicht!", "Fehler!", JOptionPane.ERROR_MESSAGE);
+					console.printConsoleErrorLine("Die angegebene Datei existiert nicht", 1);
 					return;
 				}
 			}
