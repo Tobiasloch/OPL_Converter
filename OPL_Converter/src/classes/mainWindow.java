@@ -1,59 +1,51 @@
 package classes;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.TableColumnModelEvent;
+import javax.swing.event.TableColumnModelListener;
 import javax.swing.JTextField;
-import javax.swing.ListModel;
-import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerModel;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
-import java.awt.GridLayout;
 import javax.swing.JButton;
-import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JTextArea;
 import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.regex.Pattern;
 import java.awt.event.ActionEvent;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Desktop;
 
-import javax.swing.JList;
-import javax.swing.JSpinner;
-import javax.swing.SwingConstants;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
-import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
-import javax.swing.table.TableColumnModel;
-import javax.swing.ScrollPaneConstants;
 
 @SuppressWarnings("serial")
 public class mainWindow extends JFrame {
 
+	/* errorcodes 1 - 99
+	 * 0: no error
+	 * 
+	 * 1: outputFile error
+	 * 2: already running process
+	 * 
+	 * */
+	
+	public final String DEFAULT_OUTPUT_NAME = "output.txt";
+	
 	private JPanel contentPane;
 	private static JTextField outputField;
 	
@@ -72,7 +64,11 @@ public class mainWindow extends JFrame {
 	private JTable table;
 	private DefaultTableModel tableModel;
 	
+	OplHeader header = new OplHeader();
+	convertOPL oplConverter = new convertOPL();
+	
 	private JFrame mainFrame = this;
+	convertOplThread thread = new convertOplThread(oplConverter, mainFrame);
 	
 	public mainWindow() {
 		setTitle("Dateitrennsystem");
@@ -89,8 +85,6 @@ public class mainWindow extends JFrame {
 		splitPane.setContinuousLayout(true);
 		splitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		contentPane.add(splitPane, BorderLayout.CENTER);
-		
-		SpinnerModel model = new SpinnerNumberModel(0, 0, Integer.MAX_VALUE, 100);
 		
 		DefaultListModel<String> listModel_2 = new DefaultListModel<String>();
 		listModel_2.addElement("00:00:00");
@@ -144,7 +138,6 @@ public class mainWindow extends JFrame {
 		mainOutputPanel.add(outputField, BorderLayout.CENTER);
 		
 		outputinInputFolder = new JCheckBox("selber Ordner wie ausgew\u00E4hlte Datei");
-		outputinInputFolder.setSelected(true);
 		outputinInputFolder.setBackground(Color.WHITE);
 		outputinInputFolder.addActionListener(new ActionListener() {
 			@Override
@@ -152,7 +145,7 @@ public class mainWindow extends JFrame {
 				if (outputinInputFolder.isSelected()) {
 					File f = new File(inputField.getText());
 					
-					if (f.exists()) outputField.setText(f.getParentFile().getAbsolutePath());
+					if (f.exists()) outputField.setText(f.getParentFile().getAbsolutePath() + "\\" + DEFAULT_OUTPUT_NAME);
 				}
 			}
 		});
@@ -175,7 +168,7 @@ public class mainWindow extends JFrame {
 		});
 		inputPanel.add(btnDurchsuchen, BorderLayout.EAST);
 		
-		inputField = new JTextField("D:\\OneDrive - Technische Universität Berlin\\Schlothauer und Wauer\\Studentenjob\\22_325_2017.09.27_07-00_2017.09.27_13-00.opl");
+		inputField = new JTextField("C:\\Users\\T.loch\\Desktop\\OPL Dateien Konvertieren\\22_325_2017.09.27_07-00_2017.09.27_13-00.opl");
 		inputPanel.add(inputField, BorderLayout.CENTER);
 		inputField.setColumns(10);
 		
@@ -187,25 +180,23 @@ public class mainWindow extends JFrame {
 				table.setModel(tableModel);
 				
 				if (file.exists()) {
-					OplHeader header = new OplHeader(file, console);
+					header = new OplHeader(file, console);
 					
 					header.extractHeaderInformation();
 					for (OplType item : header.types) {
-						System.out.println(item.getType());
 						tableModel.addColumn(item.getType());
 						
 						if (item.getElements().size() > 0) {
 							int activeCol = tableModel.getColumnCount()-1;
 							
 							int activeRow = 0;
-							for (OblTypeElement elem : item.getElements()) {
+							for (OplTypeElement elem : item.getElements()) {
 								String text = elem.getName() + "(" + elem.getId() + ")";
 								
 								if (activeRow >= tableModel.getRowCount()) {
 									String[] s = new String[tableModel.getColumnCount()];
 									s[activeCol] = text;
 									
-									//System.out.println(item.getElements());
 									tableModel.addRow(s);
 								} else {
 									tableModel.setValueAt(text, activeRow, activeCol);
@@ -265,6 +256,25 @@ public class mainWindow extends JFrame {
 		table.setCellSelectionEnabled(true);
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		table.setSurrendersFocusOnKeystroke(true);
+		table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
+			@Override
+			public void columnSelectionChanged(ListSelectionEvent e) {}
+			@Override
+			public void columnRemoved(TableColumnModelEvent e) {}
+			
+			@Override
+			public void columnMoved(TableColumnModelEvent e) {
+				if (e.getToIndex() != e.getFromIndex()) {
+					Collections.swap(header.types, e.getFromIndex(), e.getToIndex());
+				}
+			}
+			
+			@Override
+			public void columnMarginChanged(ChangeEvent e) {}
+			
+			@Override
+			public void columnAdded(TableColumnModelEvent e) {}
+		});
 		
 		table.setColumnSelectionAllowed(true);
 		table.setFillsViewportHeight(true);
@@ -286,16 +296,16 @@ public class mainWindow extends JFrame {
 		
 		consoleArea = new JTextArea();
 		consoleArea.setEditable(false);
-		consoleArea.setRows(3);
+		consoleArea.setRows(4);
 		
 		consoleSP = new JScrollPane(consoleArea);
 		startArea.add(consoleSP, BorderLayout.CENTER);
 		
 		console = new Console(consoleArea, consoleSP);
 		
-		//startArea.setMinimumSize(new Dimension(mainFrame.getWidth(), console.getPreferredSize().height));
-		//startArea.setMaximumSize(new Dimension(mainFrame.getWidth(), 200));
-		//startArea.setPreferredSize(new Dimension(mainFrame.getWidth(), 100));
+		startArea.setMinimumSize(new Dimension(mainFrame.getWidth(), consoleArea.getPreferredSize().height));
+		startArea.setMaximumSize(new Dimension(mainFrame.getWidth(), 200));
+		startArea.setPreferredSize(new Dimension(mainFrame.getWidth(), 100));
 		
 		JPanel buttonPanel = new JPanel();
 		startArea.add(buttonPanel, BorderLayout.EAST);
@@ -304,7 +314,53 @@ public class mainWindow extends JFrame {
 		startButton = new JButton("Start");
 		startButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				
+				if (!thread.isAlive()) {
+					// checks if the header is read correctly
+					if (header.checkErrorStatus() != 0) {
+						console.printConsoleErrorLine("Die Headerdatei konnte nicht richtig gelesen werden!", header.checkErrorStatus());
+						JOptionPane.showMessageDialog(mainFrame, "Die Headerdatei konnte nicht richtig gelesen werden! errorcode:" + header.checkErrorStatus()
+								,"Fehler!"
+								, JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+					
+					File outputFile = new File(outputField.getText());
+					
+					// checks if the output file is correct
+					if (outputFile.getParent() == null) {
+						console.printConsoleErrorLine("Es gab ein Problem mit der output Datei!", 1);
+						JOptionPane.showMessageDialog(mainFrame, "Es gab ein Problem mit der output Datei! errorcode:1"
+								,"Fehler!"
+								, JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+
+					if (outputFile.exists()) {
+						int option = JOptionPane.showConfirmDialog(mainFrame, "Die output Datei existiert bereits, soll sie überschrieben werden?"
+								,"Fehler!"
+								, JOptionPane.YES_NO_OPTION);
+						
+						if (option == JOptionPane.YES_OPTION) {
+							outputFile.delete();
+							outputFile = new File (outputField.getText());
+							console.printConsoleLine("die Datei:\"" + outputFile + "\" wurde überschrieben!");
+						} else {
+							console.printConsole("Der Vorgang wurde abgebrochen!");
+							return;
+						}
+					}
+					
+					oplConverter = new convertOPL(header, outputFile, console);
+					oplConverter.setMainFrame(mainFrame);
+					thread = new convertOplThread(oplConverter, mainFrame);
+					thread.setConsole(console);
+
+					thread.start();
+				} else {
+					console.printConsoleErrorLine("Es wird bereits eine Datei exportiert!", 2);
+					JOptionPane.showMessageDialog(mainFrame, "Es wird bereits eine Datei exportiert! errorcode:" + 2
+							, "Fehler!", JOptionPane.ERROR_MESSAGE);
+				}
 			}
 		});
 		buttonPanel.add(startButton);
@@ -327,26 +383,6 @@ public class mainWindow extends JFrame {
 		return files;
 	}
 	
-	private static ArrayList<File> getFilesFromPath(String[] filePaths) {
-		ArrayList<File> files = new ArrayList<File>();
-		
-		for (int i = 0; i < filePaths.length; i++) {
-			files.add(new File(filePaths[i]));
-		}
-		
-		return files;
-	}
-	
-	private static String[] getListElements (ListModel<String> model) {
-		String[] str = new String[model.getSize()];
-		
-		for (int i = 0; i < model.getSize(); i++) {
-			str[i] = model.getElementAt(i);
-		}
-		
-		return str;
-	}
-	
 	public TableColumn[] getColumnsInView(JTable table) {
 	    TableColumn[] result = new TableColumn[table.getColumnCount()];
 
@@ -358,19 +394,4 @@ public class mainWindow extends JFrame {
 
 	    return result;
 	  }
-	
-	private void enableAllChildren(Container c, boolean value) {
-		for (Component comp : getAllComponents(c)) comp.setEnabled(value);
-	}
-	
-	private static List<Component> getAllComponents(Container c) {
-        Component[] comps = c.getComponents();
-        List<Component> compList = new ArrayList<Component>();
-        for (Component comp : comps) {
-            compList.add(comp);
-            if (comp instanceof Container)
-                compList.addAll(getAllComponents((Container) comp));
-        }
-        return compList;
-}
 }

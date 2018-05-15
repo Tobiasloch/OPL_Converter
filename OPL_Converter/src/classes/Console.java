@@ -27,7 +27,7 @@ public class Console {
 	
 	public void printConsole(String text) {
 		console.setText(console.getText() + text);
-		System.out.print("Konsole: " + text);
+		System.out.print(text);
 		
 		scrollDown();
 	}
@@ -37,14 +37,25 @@ public class Console {
 	}
 	
 	public void printConsoleError(String text, int errorcode) {
-		console.setText(console.getText() +  text + " (errorcode: " + errorcode + ")");
-		System.err.print("Konsole: " + text);
+		console.setText(console.getText() + " (errorcode: " + errorcode + ") " +  text );
+		System.err.print(text);
 		
 		scrollDown();
 	}
 	
 	public void printConsoleErrorLine(String text, int errorcode) {
 		printConsoleError(text + "\n", errorcode);
+	}
+	
+	public void printConsoleWarning(String text, int errorcode) {
+		console.setText(console.getText() + " (errorcode: " + errorcode + ") " +  text);
+		System.out.print(text);
+		
+		scrollDown();
+	}
+	
+	public void printConsoleWarningLine(String text, int errorcode) {
+		printConsoleWarning(text + "\n", errorcode);
 	}
 	
 	public void scrollDown() {

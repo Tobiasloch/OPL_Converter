@@ -7,7 +7,7 @@ import java.io.File;
 
 import org.junit.jupiter.api.Test;
 
-import classes.OblTypeElement;
+import classes.OplTypeElement;
 import classes.OplHeader;
 import classes.OplType;
 
@@ -28,7 +28,7 @@ class OplHeaderTest {
 		
 		for (OplType item : header.getTypes()) {
 			System.out.println(item.getType() + "  size: " + item.getElements().size());
-			for (OblTypeElement elem : item.getElements()) {
+			for (OplTypeElement elem : item.getElements()) {
 				System.out.println(item.getType() + "               ;" + elem.getName());
 			}
 		}
