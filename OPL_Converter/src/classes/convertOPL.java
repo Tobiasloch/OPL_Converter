@@ -202,7 +202,7 @@ public class convertOPL {
 								element.setValue(value);
 								blockElements.add(element);
 							} else {
-								console.printConsoleWarningLine("In Zeile (" + linecounter + ") wurde die ID der variable nicht gefunden! "
+								console.printConsoleWarningLine("In Zeile (" + linecounter + ") wurde die ID (" + id + ") der variable nicht gefunden! "
 										+ "Sie wurde daraufhin übersprungen.", 205);
 							}
 						} else {
@@ -217,6 +217,7 @@ public class convertOPL {
 					if (line != null) blockHeaderMatcher = blockHeaderPattern.matcher(line);
 					linecounter++;
 					
+					// wenn der benutzer das programm beendet
 					if (monitor.isCanceled()) {
 						console.printConsoleLine("der Vorgang wurde abgebrochen.");
 						br.close();
