@@ -20,7 +20,8 @@ public class OplHeader {
 	 * 104: die ID konnte nicht geladen werden
 	 * 105: kein Header wurde gefunden
 	 * 106: keine Daten wurden bis jetzt ausgelesen (extractHeaderInformation wurde nicht aufgerufen)
-	 * 107: variablen wurden verändert ohne Aufruf der extractHeaderInformation
+	 * 107: Variablen wurden verändert ohne Aufruf der extractHeaderInformation
+	 * 108: Problem mit den Intervallgrenzen der Header Teile
 	 * 
 	 * */
 	
@@ -29,6 +30,29 @@ public class OplHeader {
 			+ "\\p{Blank}*\\d{10}(?:\\s\\S+)+ "
 			+ "\\p{Blank}*\\d{10} \\d{10} \\d{10}(?<typeName>(?:\\s\\S+)+) "
 			+ "\\p{Blank}*(?<type>(?:\\s\\S+)+) \\p{Blank}*(?<id>\\d{10})";
+	
+	public static final String[] HEADER_REGEX = {"\\d{10}(?:\\s\\S+)+", // 1
+			"\\d{10}(?<fileInformation>(?:\\s\\S+)+)", // 2
+			"\\d{10}(?:\\s\\S+)+", // 3
+			"\\d{10} \\d{10} (?<id>\\d{10})(?<typeName>(?:\\s\\S+)+)", // 4
+			"(?<type>(?:\\S+\\s)+)",  // 5
+			"\\d{10}"}; // 6
+	
+	public static final int[] HEADER_REGEX_END = {76, 152, 228, 326, 391, 401};
+	
+	/*
+	public static final int HEADER_FIRST_END = 77;
+	public static final String HEADER_SECOND_REGEX = "\\d{10} (?<fileInformation>(?:\\S+\\s)+)";
+	public static final int HEADER_SECOND_END = 153;
+	public static final String HEADER_THIRD_REGEX = "\\d{10}(?:\\s\\S+)+";
+	public static final int HEADER_THIRD_END = 229;
+	public static final String HEADER_FOURTH_REGEX = "\\d{10} \\d{10} \\d{10}(?<typeName>(?:\\s\\S+)+)";
+	public static final int HEADER_FOURTH_END = 327;
+	public static final String HEADER_FIFTH_REGEX = "(?<type>(?:\\s\\S+)+)";
+	public static final int HEADER_FIFTH_END = 392;
+	public static final String HEADER_SIXTH_REGEX = "(?<id>\\d{10})";
+	public static final int HEADER_SIXTH_END = 402;
+	*/
 	
 	ArrayList<OplType> types; // Liste die die Opl Typen enthält
 	String fileInformation; // Informationen zur Datei. Meistens Ort der Aufnahme bzw. Dateiname
@@ -141,7 +165,9 @@ public class OplHeader {
 		}
 		
 		// Muster erstellen, nach dem später gesucht werden kann
-		Pattern headerPattern = Pattern.compile(HEADER_REG_EX);
+		Pattern[] headerPattern = new Pattern[HEADER_REGEX.length];
+		// header pattern für jeden einzelnen String laden
+		for (int i = 0; i < headerPattern.length; i++) headerPattern[i] = Pattern.compile(HEADER_REGEX[i]);
 		
 		// wird true wenn header gefunden; wichtig, damit der alg. den Header eindeutig findet
 		boolean foundHeader = false;
@@ -156,39 +182,70 @@ public class OplHeader {
 			BufferedReader br = new BufferedReader(fr);
 			
 			for (String line = br.readLine(); line!=null; line = br.readLine()) {
-				Matcher m = headerPattern.matcher(line);
+				boolean found = true;
+				Matcher[] m = new Matcher[headerPattern.length];
+				
+				String[] headerParts = new String[headerPattern.length];
+				
+				// checks if the line has the header pattern by checking each header partition
+				if (line.length() == HEADER_REGEX_END[HEADER_REGEX_END.length-1]) { // checkt ob die headerzeile die richtige länge hat
+					for (int i = 0; i < headerPattern.length; i++) {
+							int start = 0;
+							if (i > 0) start = HEADER_REGEX_END[i-1];
+							int end = HEADER_REGEX_END[i];
+							
+							// den aktuellen teil der headerzeile abschneiden
+							if (start >= 0 && start < line.length() && end >= 0 && end <= line.length()) {
+								headerParts[i] = line.substring(start, end);
+							} else {
+								console.printConsoleErrorLine("Es gab ein Problem mit den Teilen der Header Zeile!", 108);
+								return 108;
+							}
+							
+							// matcher erstellen
+							m[i] = headerPattern[i].matcher(headerParts[i]);
+			
+							// nach muster suchen
+							if (!m[i].find()) {
+								found = false;
+								break;
+							}
+					}
+				} else {
+					found = false;
+				}
+				
 				lineCounter++;
 				
-				if (m.find()) {
+				if (found) {
 					if (startHeader == -1) {
 						startHeader = lineCounter;
 						foundHeader = true;
 					}
 					
 					// überprüft ob genug Daten gefunden wurden
-					if (m.groupCount() != 4) {
-						console.printConsoleErrorLine("Es wurden nicht 4 Variablen in der Zeile gefunden, sondern" + 
-								m.groupCount() + "!; Zeile: " + lineCounter, 103);
+					if (m[1].groupCount() != 1 || m[3].groupCount() != 2 || m[4].groupCount() != 1) {
+						console.printConsoleErrorLine("Es wurden nicht 4 Variablen in der Zeile gefunden! Zeile: " + lineCounter, 103);
 						errorStatus = 103;
 						return 103;
 					}
 					
 					// load file Information
-					fileInformation = m.group(1);
+					fileInformation = m[1].group(1);
 					
 					OplTypeElement element = new OplTypeElement();
 					
 					// load typeName
-					element.setName(m.group(2));
+					element.setName(m[3].group(2));
 					
 					// load type
-					String type = m.group(3);
+					String type = m[4].group(1);
 					
 					// load type ID
 					long id = 0;
 					
 					try {
-						id = Long.parseLong(m.group(4));
+						id = Long.parseLong(m[3].group(1));
 					} catch (NumberFormatException nfe) {
 						console.printConsoleErrorLine("Die ID konnte nicht richtig gelesen werden!; Zeile: " 
 								+ lineCounter, 104);

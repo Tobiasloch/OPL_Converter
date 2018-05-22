@@ -31,16 +31,22 @@ public class convertOPL {
 	 * 
 	 * */
 	
-	private final String BLOCK_HEADER = "(?<time>\\d{10}) \\d{10} (?<SZP>\\d{3}) \\d{3} \\d{10} \\d{3} \\d{3}";
-	private final String BLOCK_ELEMENT = "(?<time>\\d{10}) (?<id>\\d{10}) \\d{1} \\d{2} \\d{1} (?<value>\\d{10})";
+	private final String BLOCK_HEADER = "(?<time>\\d{10}) \\d{10} (?<SZP>\\d{3}) \\w{3} \\d{10} \\w{3} \\w{3}";
+	private final String BLOCK_ELEMENT = "(?<time>\\d{10}) (?<id>\\d{10}) \\w{1} \\w{2} \\w{1} (?<value>\\d{10})";
+	
+	public static final String DELIM_TAB = "\t";
+	public static final String DELIM_COMMA = ",";
+	public static final String DELIM_SEMICOLON = ";";
+	public static final String DELIM_SPACE = " ";
 	
 	private JFrame mainFrame;
 	
-	private final String DEFAULT_DELIMITER = ";";
+	private final String DEFAULT_DELIMITER = DELIM_SEMICOLON;
 	
 	// for error handling
-	ArrayList<Long> notMatchingLines; // lines that did not match any pattern
-	ArrayList<Long> linesInWrongBlock; // lines that where in the wrong second block
+	String notMatchingLines; // lines that did not match any pattern
+	String linesInWrongBlock; // lines that where in the wrong second block
+	String idsNotFound;
 	
 	private File outputFile;
 	private OplHeader header; // header of the opl file
@@ -62,8 +68,9 @@ public class convertOPL {
 		this.setOutputFile(outputFile);
 		this.setConsole(console);
 		
-		notMatchingLines = new ArrayList<Long>();
-		linesInWrongBlock = new ArrayList<Long>();
+		notMatchingLines = "";
+		linesInWrongBlock = "";
+		idsNotFound = "";
 		delimiter = DEFAULT_DELIMITER;
 		setMainFrame(null);
 	}
@@ -202,14 +209,13 @@ public class convertOPL {
 								element.setValue(value);
 								blockElements.add(element);
 							} else {
-								console.printConsoleWarningLine("In Zeile (" + linecounter + ") wurde die ID (" + id + ") der variable nicht gefunden! "
-										+ "Sie wurde daraufhin übersprungen.", 205);
+								idsNotFound+= ", " + linecounter;
 							}
 						} else {
-							linesInWrongBlock.add(linecounter);
+							linesInWrongBlock+= ", " + linecounter;
 						}
 					} else {
-						notMatchingLines.add(linecounter);
+						notMatchingLines+= ", " + linecounter;
 					}
 					progress += line.length()+2;
 					line = br.readLine();
@@ -251,20 +257,16 @@ public class convertOPL {
 	}
 	
 	private void printWrongLines() {
-		if (notMatchingLines.size() > 0) {
-			console.printConsole("Folgende Zeilen wurden übersprungen, da kein Zellenelement oder Zeilenkopf erkannt wurde: ");
-			
-			for (Long item : notMatchingLines) {
-				console.printConsole(", " + item);
-			}
+		if (!notMatchingLines.equals("")) {
+			console.printConsoleLine("Folgende Zeilen wurden übersprungen, da kein Zellenelement oder Zeilenkopf erkannt wurde: " + notMatchingLines);
 		}
 		
-		if (linesInWrongBlock.size() > 0) {
-			console.printConsole("In folgenden Zeilen wurde eine Zeile im falschen block festgestellt: ");
-			
-			for (Long item : linesInWrongBlock) {
-				console.printConsole(", " + item);
-			}
+		if (!linesInWrongBlock.equals("")) {
+			console.printConsoleLine("In folgenden Zeilen wurde eine Zeile im falschen block festgestellt: " + linesInWrongBlock);
+		}
+		
+		if (!idsNotFound.equals("")) {
+			console.printConsoleErrorLine("In folgenden Zeilen wurde die ID nicht erkannt: " + idsNotFound, 205);
 		}
 	}
 	

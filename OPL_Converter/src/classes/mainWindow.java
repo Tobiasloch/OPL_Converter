@@ -7,6 +7,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.TableColumnModelEvent;
 import javax.swing.event.TableColumnModelListener;
@@ -20,6 +21,8 @@ import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JTextArea;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +35,17 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
+import java.awt.GridLayout;
+import java.awt.Rectangle;
+import java.awt.FlowLayout;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.JRadioButton;
+import java.awt.Component;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.ListSelectionModel;
+import javax.swing.JComboBox;
 
 @SuppressWarnings("serial")
 public class mainWindow extends JFrame {
@@ -57,6 +71,8 @@ public class mainWindow extends JFrame {
 	private JScrollPane consoleSP;
 	private Console console;
 	
+	private JCheckBox chckbxTypenInReihenkpfe;
+	
 	private ArrayList<Pattern> separators = new ArrayList<Pattern>();
 	private ArrayList<Pattern> types = new ArrayList<Pattern>();
 	
@@ -64,11 +80,18 @@ public class mainWindow extends JFrame {
 	private JTable table;
 	private DefaultTableModel tableModel;
 	
+	private JRadioButton rdbtnTabstop;
+	private JRadioButton rdbtnComma;
+	private JRadioButton rdbtnSpace;
+	private JRadioButton rdbtnSemicolon;
+	private JRadioButton rdbtnAndere;
+	
 	OplHeader header = new OplHeader();
 	convertOPL oplConverter = new convertOPL();
 	
 	private JFrame mainFrame = this;
 	convertOplThread thread = new convertOplThread(oplConverter, mainFrame);
+	private JTextField textField;
 	
 	public mainWindow() {
 		setTitle("Dateitrennsystem");
@@ -187,7 +210,8 @@ public class mainWindow extends JFrame {
 					
 					header.extractHeaderInformation();
 					for (OplType item : header.types) {
-						tableModel.addColumn(item.getType());
+						if (!chckbxTypenInReihenkpfe.isSelected()) tableModel.addColumn(item.getType());
+						//else tableModel.addRow(item.getType());
 						
 						if (item.getElements().size() > 0) {
 							int activeCol = tableModel.getColumnCount()-1;
@@ -257,6 +281,8 @@ public class mainWindow extends JFrame {
 		
 		tableModel = new DefaultTableModel();
 		table = new JTable(tableModel);
+		table.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+		table.setRowSelectionAllowed(false);
 		table.setCellSelectionEnabled(true);
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		table.setSurrendersFocusOnKeystroke(true);
@@ -279,12 +305,22 @@ public class mainWindow extends JFrame {
 			@Override
 			public void columnAdded(TableColumnModelEvent e) {}
 		});
-		
-		table.setColumnSelectionAllowed(true);
+		  
+		table.getTableHeader().setAutoscrolls(true);
+		table.getTableHeader().addMouseMotionListener(new MouseMotionAdapter() { 
+		    public void mouseDragged(MouseEvent e) { 
+		        Rectangle r = new Rectangle(e.getX(), e.getY(), 1, 1);    
+		        table.scrollRectToVisible(r);
+		    } 
+		});
 		table.setFillsViewportHeight(true);
 		
 		JScrollPane tableRendererScroller = new JScrollPane(table);
 		tableRenderer.add(tableRendererScroller, BorderLayout.CENTER);
+		
+		JPanel panel = new JPanel();
+		tableRenderer.add(panel, BorderLayout.SOUTH);
+		panel.setLayout(new BorderLayout(0, 0));
 		
 		JPanel settingsPanel = new JPanel();
 		splitPane_2.setRightComponent(settingsPanel);
@@ -292,6 +328,102 @@ public class mainWindow extends JFrame {
 		
 		JLabel lblEinstellungen = new JLabel("Einstellungen:");
 		settingsPanel.add(lblEinstellungen, BorderLayout.NORTH);
+		
+		JSplitPane splitPane_3 = new JSplitPane();
+		splitPane_3.setContinuousLayout(true);
+		splitPane_3.setResizeWeight(1.0);
+		settingsPanel.add(splitPane_3, BorderLayout.CENTER);
+		
+		JPanel mainSettingsPanel = new JPanel();
+		splitPane_3.setLeftComponent(mainSettingsPanel);
+		mainSettingsPanel.setLayout(new GridLayout(0, 2, 0, 0));
+		
+		JPanel panel_1 = new JPanel();
+		mainSettingsPanel.add(panel_1);
+		panel_1.setLayout(new BorderLayout(0, 0));
+		
+		JLabel lblInformationenZurVariable = new JLabel("Variableninformation:");
+		panel_1.add(lblInformationenZurVariable, BorderLayout.NORTH);
+		
+		JTextArea txtrNameId = new JTextArea();
+		txtrNameId.setEnabled(false);
+		txtrNameId.setEditable(false);
+		JScrollPane txtrNameIdScroller = new JScrollPane(txtrNameId);
+		txtrNameId.setText("Name:\r\nID:\r\nTyp:\r\n*NOT USED YET*");
+		panel_1.add(txtrNameIdScroller);
+		
+		ButtonGroup delGroup = new ButtonGroup();
+		
+		JPanel checkBoxPanel = new JPanel();
+		splitPane_3.setRightComponent(checkBoxPanel);
+		checkBoxPanel.setLayout(new BoxLayout(checkBoxPanel, BoxLayout.Y_AXIS));
+		
+		JLabel lblAndere = new JLabel("Andere:");
+		checkBoxPanel.add(lblAndere);
+		
+		chckbxTypenInReihenkpfe = new JCheckBox("Typen in Reihenk\u00F6pfe");
+		chckbxTypenInReihenkpfe.setEnabled(false);
+		checkBoxPanel.add(chckbxTypenInReihenkpfe);
+		
+		JPanel delimiterPanel = new JPanel();
+		checkBoxPanel.add(delimiterPanel);
+		delimiterPanel.setAlignmentY(Component.TOP_ALIGNMENT);
+		delimiterPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		delimiterPanel.setLayout(new BorderLayout(0, 0));
+		
+		JLabel lblDelimiter = new JLabel("Delimiter:");
+		delimiterPanel.add(lblDelimiter, BorderLayout.NORTH);
+		
+		JPanel delimiterList = new JPanel();
+		delimiterPanel.add(delimiterList, BorderLayout.WEST);
+		delimiterList.setLayout(new BoxLayout(delimiterList, BoxLayout.Y_AXIS));
+		
+		JPanel tabPanel = new JPanel();
+		delimiterList.add(tabPanel);
+		tabPanel.setLayout(new BorderLayout(0, 0));
+		
+		rdbtnTabstop = new JRadioButton("Tabstop");
+		delimiterList.add(rdbtnTabstop);
+		rdbtnTabstop.setAlignmentY(0.0f);
+		
+		rdbtnSemicolon = new JRadioButton("Semikolon");
+		rdbtnSemicolon.setSelected(true);
+		rdbtnSemicolon.setAlignmentY(0.0f);
+		delimiterList.add(rdbtnSemicolon);
+		
+		rdbtnComma = new JRadioButton("Komma");
+		rdbtnComma.setAlignmentY(0.0f);
+		delimiterList.add(rdbtnComma);
+		
+		rdbtnSpace = new JRadioButton("Leerzeichen");
+		rdbtnSpace.setAlignmentY(Component.TOP_ALIGNMENT);
+		delimiterList.add(rdbtnSpace);
+		
+		JPanel othersPanel = new JPanel();
+		othersPanel.setAlignmentY(0.0f);
+		othersPanel.setAlignmentX(0.0f);
+		delimiterList.add(othersPanel);
+		othersPanel.setLayout(new BorderLayout(0, 0));
+		
+		rdbtnAndere = new JRadioButton("andere");
+		rdbtnAndere.addChangeListener(new ChangeListener() {
+			@Override
+			public void stateChanged(ChangeEvent e) {
+				if (rdbtnAndere.isSelected()) textField.setEnabled(true);
+				else textField.setEnabled(false);
+			}
+		});
+		othersPanel.add(rdbtnAndere, BorderLayout.WEST);
+		delGroup.add(rdbtnSemicolon);
+		delGroup.add(rdbtnComma);
+		delGroup.add(rdbtnSpace);
+		delGroup.add(rdbtnAndere);
+		delGroup.add(rdbtnTabstop);
+		
+		textField = new JTextField();
+		textField.setEnabled(false);
+		othersPanel.add(textField, BorderLayout.CENTER);
+		textField.setColumns(3);
 		
 		JPanel startArea = new JPanel();
 		
@@ -356,6 +488,8 @@ public class mainWindow extends JFrame {
 					
 					oplConverter = new convertOPL(header, outputFile, console);
 					oplConverter.setMainFrame(mainFrame);
+					oplConverter.setDelimiter(getSelectedDelimiter());
+					
 					thread = new convertOplThread(oplConverter, mainFrame);
 					thread.setConsole(console);
 
@@ -377,6 +511,19 @@ public class mainWindow extends JFrame {
 				console.clearConsole();
 			}
 		});
+	}
+	
+	private String getSelectedDelimiter() {
+		if (rdbtnTabstop.isSelected()) {
+			
+			return convertOPL.DELIM_TAB;
+		}
+		else if (rdbtnComma.isSelected()) return convertOPL.DELIM_COMMA;
+		else if (rdbtnAndere.isSelected()) return textField.getText();
+		else if (rdbtnSpace.isSelected()) return convertOPL.DELIM_SPACE;
+		else if (rdbtnSemicolon.isSelected()) return convertOPL.DELIM_SEMICOLON;
+		
+		return "";
 	}
 	
 	public static File[] convertArrayListToArray (ArrayList<File> f) {
