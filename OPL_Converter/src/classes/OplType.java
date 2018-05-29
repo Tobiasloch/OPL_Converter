@@ -22,6 +22,14 @@ public class OplType {
 		this("");
 	}
 	
+	public boolean equals(OplType type) {
+		if (type.equals(type)) {
+			if (elements.equals(type.elements)) return true;
+		}
+		
+		return false;
+	}
+	
 	public void addElement(OplTypeElement element) {
 		this.elements.add(element);
 	}

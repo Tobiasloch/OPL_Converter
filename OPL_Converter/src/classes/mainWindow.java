@@ -8,10 +8,13 @@ import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.TableColumnModelEvent;
 import javax.swing.event.TableColumnModelListener;
 import javax.swing.JTextField;
+import javax.swing.ListModel;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
@@ -24,10 +27,13 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.regex.Pattern;
 import java.awt.event.ActionEvent;
 import java.awt.Color;
 
@@ -35,17 +41,15 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
-import java.awt.GridLayout;
 import java.awt.Rectangle;
-import java.awt.FlowLayout;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JRadioButton;
 import java.awt.Component;
-import javax.swing.JSpinner;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.ListSelectionModel;
-import javax.swing.JComboBox;
+import javax.swing.JTabbedPane;
+import javax.swing.JList;
+import java.awt.GridLayout;
 
 @SuppressWarnings("serial")
 public class mainWindow extends JFrame {
@@ -55,10 +59,12 @@ public class mainWindow extends JFrame {
 	 * 
 	 * 1: file input error
 	 * 2: already running process
+	 * 3: information error
 	 * 
 	 * */
 	
-	public final String DEFAULT_OUTPUT_NAME = "output.txt";
+	public static final String DEFAULT_OUTPUT_NAME = "output.txt";
+	public static final String DATE_FORMAT_INFO = "http://www.sdfonlinetester.info/";
 	
 	private JPanel contentPane;
 	private static JTextField outputField;
@@ -73,10 +79,6 @@ public class mainWindow extends JFrame {
 	
 	private JCheckBox chckbxTypenInReihenkpfe;
 	
-	private ArrayList<Pattern> separators = new ArrayList<Pattern>();
-	private ArrayList<Pattern> types = new ArrayList<Pattern>();
-	
-	private JTextField inputField;
 	private JTable table;
 	private DefaultTableModel tableModel;
 	
@@ -89,12 +91,16 @@ public class mainWindow extends JFrame {
 	OplHeader header = new OplHeader();
 	convertOPL oplConverter = new convertOPL();
 	
-	private JFrame mainFrame = this;
+	private mainWindow mainFrame = this;
 	convertOplThread thread = new convertOplThread(oplConverter, mainFrame);
 	private JTextField textField;
+	private JTextField dateFormatField;
+	
+	JList<String> inputList;
+	addInput addInput;
 	
 	public mainWindow() {
-		setTitle("Dateitrennsystem");
+		setTitle("OPL Converter");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 600, 600);
 		contentPane = new JPanel();
@@ -109,19 +115,17 @@ public class mainWindow extends JFrame {
 		splitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		contentPane.add(splitPane, BorderLayout.CENTER);
 		
-		DefaultListModel<String> listModel_2 = new DefaultListModel<String>();
-		listModel_2.addElement("00:00:00");
-		separators.add(Pattern.compile(listModel_2.get(0)));
-		
-		DefaultListModel<String> listModel = new DefaultListModel<String>();
-		listModel.addElement("\\d\\d:\\d\\d:\\d\\d");
-		types.add(Pattern.compile(listModel.get(0)));
+		DefaultListModel<String> model = new DefaultListModel<String>();
+		inputList = new JList<String>(model);
+		inputList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+		inputList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		
 		JPanel inputOutputArea = new JPanel();
 		splitPane.setLeftComponent(inputOutputArea);
 		inputOutputArea.setLayout(new BorderLayout(0, 0));
 		
 		JSplitPane inputOutputSplit = new JSplitPane();
+		inputOutputSplit.setContinuousLayout(true);
 		inputOutputSplit.setResizeWeight(0.5);
 		inputOutputArea.add(inputOutputSplit, BorderLayout.CENTER);
 		
@@ -145,9 +149,11 @@ public class mainWindow extends JFrame {
 				JFileChooser fc = new JFileChooser();
 				fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
 				File f = new File(outputField.getText());
-				if (f.exists()) fc.setCurrentDirectory(f);
 				
-				fc.showSaveDialog(null);
+				if (f.getParentFile() != null) fc.setCurrentDirectory(f.getParentFile());
+				else if (f.isDirectory()) fc.setCurrentDirectory(f);
+				
+				fc.showSaveDialog(mainFrame);
 				if (fc.getSelectedFile() != null) outputField.setText(fc.getSelectedFile().getPath());
 			}
 		});
@@ -158,91 +164,7 @@ public class mainWindow extends JFrame {
 		inputPanel.setLayout(new BorderLayout(0, 0));
 		
 		outputField = new JTextField();
-		mainOutputPanel.add(outputField, BorderLayout.CENTER);
-		
-		outputinInputFolder = new JCheckBox("selber Ordner wie ausgew\u00E4hlte Datei");
-		outputinInputFolder.setBackground(Color.WHITE);
-		outputinInputFolder.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				if (outputinInputFolder.isSelected()) {
-					File f = new File(inputField.getText());
-					
-					if (f.exists()) outputField.setText(f.getParentFile().getAbsolutePath() + "\\" + DEFAULT_OUTPUT_NAME);
-				}
-			}
-		});
-		outputPanel.add(outputinInputFolder, BorderLayout.SOUTH);
-		
-		JLabel lblInput = new JLabel(" Input:");
-		inputPanel.add(lblInput, BorderLayout.NORTH);
-		
-		JButton btnDurchsuchen = new JButton("Durchsuchen...");
-		btnDurchsuchen.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				JFileChooser fc = new JFileChooser();
-				fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-				File f = new File(inputField.getText());
-				if (f.exists()) fc.setCurrentDirectory(f);
-				
-				fc.showSaveDialog(null);
-				if (fc.getSelectedFile() != null) {
-					inputField.setText(fc.getSelectedFile().getPath());
-					if (outputinInputFolder.isSelected()) outputField.setText(fc.getSelectedFile().getParentFile().getPath() + "\\" + DEFAULT_OUTPUT_NAME);
-				}
-			}
-		});
-		inputPanel.add(btnDurchsuchen, BorderLayout.EAST);
-		
-		inputField = new JTextField();
-		inputPanel.add(inputField, BorderLayout.CENTER);
-		inputField.setColumns(10);
-		
-		JButton btnTabelleRendern = new JButton("Tabelle rendern");
-		btnTabelleRendern.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				File file = new File(inputField.getText());
-				DefaultTableModel tableModel = new DefaultTableModel();
-				table.setModel(tableModel);
-				
-				if (file.exists()) {
-					header = new OplHeader(file, console);
-					
-					header.extractHeaderInformation();
-					for (OplType item : header.types) {
-						if (!chckbxTypenInReihenkpfe.isSelected()) tableModel.addColumn(item.getType());
-						//else tableModel.addRow(item.getType());
-						
-						if (item.getElements().size() > 0) {
-							int activeCol = tableModel.getColumnCount()-1;
-							
-							int activeRow = 0;
-							for (OplTypeElement elem : item.getElements()) {
-								String text = elem.getName() + "(" + elem.getId() + ")";
-								
-								if (activeRow >= tableModel.getRowCount()) {
-									String[] s = new String[tableModel.getColumnCount()];
-									s[activeCol] = text;
-									
-									tableModel.addRow(s);
-								} else {
-									tableModel.setValueAt(text, activeRow, activeCol);
-								}
-								
-								activeRow++;
-							}
-						}
-					}
-					table.repaint();
-				} else {
-					JOptionPane.showMessageDialog(mainFrame, "Die angegebene Datei existiert nicht!", "Fehler!", JOptionPane.ERROR_MESSAGE);
-					console.printConsoleErrorLine("Die angegebene Datei existiert nicht", 1);
-					return;
-				}
-			}
-		});
-		inputPanel.add(btnTabelleRendern, BorderLayout.SOUTH);
-		/*inputField.getDocument().addDocumentListener(new DocumentListener() { Needs to be fixed
+		outputField.getDocument().addDocumentListener(new DocumentListener() {
 			@Override
 			public void changedUpdate(DocumentEvent arg0) {changed();}
 			@Override
@@ -251,13 +173,92 @@ public class mainWindow extends JFrame {
 			public void removeUpdate(DocumentEvent arg0) {changed();}
 			
 			private void changed() {
-				if (outputinInputFolder.isSelected()) {
-					File f = new File(inputField.getText());
-					System.out.println(f.getParentFile().getName());
-					if (f.exists() && f.getParentFile().exists()) outputField.setText(f.getParentFile().getAbsolutePath());
+				outputinInputFolder.setSelected(false);
+			}
+		});
+		mainOutputPanel.add(outputField, BorderLayout.CENTER);
+		
+		outputinInputFolder = new JCheckBox("selber Ordner wie ausgew\u00E4hlte Datei");
+		outputinInputFolder.setBackground(Color.WHITE);
+		outputinInputFolder.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				if (outputinInputFolder.isSelected() && inputList.getSelectedIndex() >= 0) {
+					File f = new File(inputList.getSelectedValue());
+					
+					if (f.exists() && f.getParentFile() != null) outputField.setText(f.getParentFile().getAbsolutePath() + "\\" + DEFAULT_OUTPUT_NAME);
 				}
 			}
-		});*/
+		});
+		outputPanel.add(outputinInputFolder, BorderLayout.SOUTH);
+		
+		JLabel lblInput = new JLabel(" Input:");
+		inputPanel.add(lblInput, BorderLayout.NORTH);
+		
+		JPanel panel_1 = new JPanel();
+		inputPanel.add(panel_1, BorderLayout.SOUTH);
+		panel_1.setLayout(new GridLayout(0, 2, 0, 0));
+		
+		JButton btnTabelleRendern = new JButton("Tabelle rendern");
+		panel_1.add(btnTabelleRendern);
+		btnTabelleRendern.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				// erstelle file array und checke ob die dateien existieren
+				File[] files = new File[inputList.getModel().getSize()];
+				String[] paths = getListElements(inputList);
+				
+				for (int i = 0; i < files.length; i++) {
+					files[i] = new File(paths[i]);
+				}
+				
+				DefaultTableModel tableModel = new DefaultTableModel();
+				table.setModel(tableModel);
+				
+				header = new OplHeader(files, console);
+				
+				header.extractHeaderInformation();
+				for (OplType item : header.getTypes()) {
+					if (!chckbxTypenInReihenkpfe.isSelected()) tableModel.addColumn(item.getType());
+					
+					if (item.getElements().size() > 0) {
+						int activeCol = tableModel.getColumnCount()-1;
+						
+						int activeRow = 0;
+						for (OplTypeElement elem : item.getElements()) {
+							String text = elem.getName() + "(" + elem.getId() + ")";
+							
+							if (activeRow >= tableModel.getRowCount()) {
+								String[] s = new String[tableModel.getColumnCount()];
+								s[activeCol] = text;
+								
+								tableModel.addRow(s);
+							} else {
+								tableModel.setValueAt(text, activeRow, activeCol);
+							}
+							
+							activeRow++;
+						}
+					}
+				}
+				table.repaint();
+			}
+		});
+		
+		JButton btnDurchsuchen = new JButton("Liste Bearbeiten");
+		panel_1.add(btnDurchsuchen);
+		btnDurchsuchen.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				addInput = new addInput();
+				ArrayList<String> elementList = new ArrayList<String>(Arrays.asList(getListElements(inputList)));
+				
+				addInput.setElements(elementList);
+				addInput.showOpenDialog(mainFrame);
+			}
+		});
+		
+		
+		JScrollPane inputListScroller = new JScrollPane(inputList);
+		inputPanel.add(inputListScroller, BorderLayout.CENTER);
 		
 		JSplitPane splitPane_1 = new JSplitPane();
 		splitPane_1.setResizeWeight(1.0);
@@ -295,7 +296,7 @@ public class mainWindow extends JFrame {
 			@Override
 			public void columnMoved(TableColumnModelEvent e) {
 				if (e.getToIndex() != e.getFromIndex()) {
-					Collections.swap(header.types, e.getFromIndex(), e.getToIndex());
+					Collections.swap(header.getTypes(), e.getFromIndex(), e.getToIndex());
 				}
 			}
 			
@@ -334,36 +335,11 @@ public class mainWindow extends JFrame {
 		splitPane_3.setResizeWeight(1.0);
 		settingsPanel.add(splitPane_3, BorderLayout.CENTER);
 		
-		JPanel mainSettingsPanel = new JPanel();
-		splitPane_3.setLeftComponent(mainSettingsPanel);
-		mainSettingsPanel.setLayout(new GridLayout(0, 2, 0, 0));
-		
-		JPanel panel_1 = new JPanel();
-		mainSettingsPanel.add(panel_1);
-		panel_1.setLayout(new BorderLayout(0, 0));
-		
-		JLabel lblInformationenZurVariable = new JLabel("Variableninformation:");
-		panel_1.add(lblInformationenZurVariable, BorderLayout.NORTH);
-		
-		JTextArea txtrNameId = new JTextArea();
-		txtrNameId.setEnabled(false);
-		txtrNameId.setEditable(false);
-		JScrollPane txtrNameIdScroller = new JScrollPane(txtrNameId);
-		txtrNameId.setText("Name:\r\nID:\r\nTyp:\r\n*NOT USED YET*");
-		panel_1.add(txtrNameIdScroller);
-		
 		ButtonGroup delGroup = new ButtonGroup();
 		
 		JPanel checkBoxPanel = new JPanel();
 		splitPane_3.setRightComponent(checkBoxPanel);
 		checkBoxPanel.setLayout(new BoxLayout(checkBoxPanel, BoxLayout.Y_AXIS));
-		
-		JLabel lblAndere = new JLabel("Andere:");
-		checkBoxPanel.add(lblAndere);
-		
-		chckbxTypenInReihenkpfe = new JCheckBox("Typen in Reihenk\u00F6pfe");
-		chckbxTypenInReihenkpfe.setEnabled(false);
-		checkBoxPanel.add(chckbxTypenInReihenkpfe);
 		
 		JPanel delimiterPanel = new JPanel();
 		checkBoxPanel.add(delimiterPanel);
@@ -425,6 +401,59 @@ public class mainWindow extends JFrame {
 		othersPanel.add(textField, BorderLayout.CENTER);
 		textField.setColumns(3);
 		
+		JLabel lblAndere = new JLabel("Andere:");
+		checkBoxPanel.add(lblAndere);
+		
+		chckbxTypenInReihenkpfe = new JCheckBox("Typen in Reihenk\u00F6pfe");
+		chckbxTypenInReihenkpfe.setEnabled(false);
+		checkBoxPanel.add(chckbxTypenInReihenkpfe);
+		
+		JTabbedPane mainSettingsPanel = new JTabbedPane(JTabbedPane.TOP);
+		splitPane_3.setLeftComponent(mainSettingsPanel);
+		
+		JPanel variableInformationPanel = new JPanel();
+		mainSettingsPanel.addTab("Variableninformationen", null, variableInformationPanel, null);
+		variableInformationPanel.setLayout(new BorderLayout(0, 0));
+		
+		JTextArea txtrNameId = new JTextArea();
+		txtrNameId.setEnabled(false);
+		txtrNameId.setEditable(false);
+		JScrollPane txtrNameIdScroller = new JScrollPane(txtrNameId);
+		txtrNameId.setText("Name:\r\nID:\r\nTyp:\r\n*NOT USED YET*");
+		variableInformationPanel.add(txtrNameIdScroller);
+		
+		JPanel timeStampSettings = new JPanel();
+		mainSettingsPanel.addTab("Zeit Stempel", null, timeStampSettings, null);
+		timeStampSettings.setLayout(new BorderLayout(0, 0));
+		
+		JPanel dateFormatPanel = new JPanel();
+		timeStampSettings.add(dateFormatPanel, BorderLayout.NORTH);
+		dateFormatPanel.setLayout(new BorderLayout(0, 0));
+		
+		dateFormatField = new JTextField();
+		dateFormatField.setText(convertOPL.DEFAULT_DATE_FORMAT);
+		dateFormatPanel.add(dateFormatField, BorderLayout.CENTER);
+		dateFormatField.setColumns(10);
+		
+		JLabel lblZeitstempelFormat = new JLabel("Zeitstempel Format:");
+		dateFormatPanel.add(lblZeitstempelFormat, BorderLayout.NORTH);
+		
+		JButton btnNewButton = new JButton("?");
+		btnNewButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					java.awt.Desktop.getDesktop().browse(new URI(DATE_FORMAT_INFO));
+				} catch (IOException e) {
+					console.printConsoleErrorLine("Es gab ein Fehler mit der URL über die DateFormat Information!", 3);
+					e.printStackTrace();
+				} catch (URISyntaxException e) {
+					console.printConsoleErrorLine("Es gab ein Fehler mit der URL über die DateFormat Information!", 3);
+					e.printStackTrace();
+				}
+			}
+		});
+		dateFormatPanel.add(btnNewButton, BorderLayout.EAST);
+		
 		JPanel startArea = new JPanel();
 		
 		splitPane_1.setRightComponent(startArea);
@@ -463,7 +492,7 @@ public class mainWindow extends JFrame {
 					File outputFile = new File(outputField.getText());
 					
 					// checks if the output file is correct
-					if (outputFile.getParent() == null) {
+					if (outputFile.getParent() == null || !outputFile.getParentFile().exists() || outputFile.isDirectory()) {
 						console.printConsoleErrorLine("Es gab ein Problem mit der output Datei!", 1);
 						JOptionPane.showMessageDialog(mainFrame, "Es gab ein Problem mit der output Datei! errorcode:1"
 								,"Fehler!"
@@ -485,10 +514,9 @@ public class mainWindow extends JFrame {
 							return;
 						}
 					}
-					
-					oplConverter = new convertOPL(header, outputFile, console);
+					// setting up converter
+					oplConverter = new convertOPL(header, outputFile, console, getSelectedDelimiter(), dateFormatField.getText());
 					oplConverter.setMainFrame(mainFrame);
-					oplConverter.setDelimiter(getSelectedDelimiter());
 					
 					thread = new convertOplThread(oplConverter, mainFrame);
 					thread.setConsole(console);
@@ -513,6 +541,17 @@ public class mainWindow extends JFrame {
 		});
 	}
 	
+	public void updateInput() {
+		DefaultListModel<String> InputListModel = (DefaultListModel<String>) (inputList.getModel());
+		
+		ArrayList<String> str = addInput.getElements();
+		InputListModel.removeAllElements();
+		
+		for (String s : str) if (s!="") InputListModel.addElement(s);
+		
+		if (inputList.getSelectedIndex() == -1 && InputListModel.size() > 0) inputList.setSelectedIndex(0);
+	}
+	
 	private String getSelectedDelimiter() {
 		if (rdbtnTabstop.isSelected()) {
 			
@@ -524,6 +563,18 @@ public class mainWindow extends JFrame {
 		else if (rdbtnSemicolon.isSelected()) return convertOPL.DELIM_SEMICOLON;
 		
 		return "";
+	}
+	
+	private static String[] getListElements (JList<String> list) {
+		ListModel<String> model = list.getModel();
+		
+		String[] str = new String[model.getSize()];
+		
+		for (int i = 0; i < model.getSize(); i++) {
+			str[i] = model.getElementAt(i);
+		}
+		
+		return str;
 	}
 	
 	public static File[] convertArrayListToArray (ArrayList<File> f) {
@@ -538,7 +589,7 @@ public class mainWindow extends JFrame {
 	    TableColumn[] result = new TableColumn[table.getColumnCount()];
 
 	    // Use an enumeration
-	    Enumeration e = table.getColumnModel().getColumns();
+	    Enumeration<TableColumn> e = table.getColumnModel().getColumns();
 	    for (int i = 0; e.hasMoreElements(); i++) {
 	      result[i] = (TableColumn) e.nextElement();
 	    }

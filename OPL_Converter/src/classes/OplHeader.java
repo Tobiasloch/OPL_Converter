@@ -22,6 +22,7 @@ public class OplHeader {
 	 * 106: keine Daten wurden bis jetzt ausgelesen (extractHeaderInformation wurde nicht aufgerufen)
 	 * 107: Variablen wurden verändert ohne Aufruf der extractHeaderInformation
 	 * 108: Problem mit den Intervallgrenzen der Header Teile
+	 * 109: Header von verschiedenen Dateien stimmen nicht überein
 	 * 
 	 * */
 	
@@ -54,24 +55,24 @@ public class OplHeader {
 	public static final int HEADER_SIXTH_END = 402;
 	*/
 	
-	ArrayList<OplType> types; // Liste die die Opl Typen enthält
-	String fileInformation; // Informationen zur Datei. Meistens Ort der Aufnahme bzw. Dateiname
+	private ArrayList<OplType> types; // Liste die die Opl Typen enthält
+	private String fileInformation; // Informationen zur Datei. Meistens Ort der Aufnahme bzw. Dateiname
 	
 	private long headerStart;
 	private long headerEnd;
 	
 	private int errorStatus;
 	
-	private File OplFile; // Datei die ausgelesen werden soll
+	private File[] OplFiles; // Datei die ausgelesen werden soll
 	
 	private Console console; // optional: Konsole
 	
 	public OplHeader() {
-		this(new File(""));
+		this(new File[0]);
 	}
 	
-	public OplHeader(File OplFile) {
-		this.OplFile = OplFile;
+	public OplHeader(File[] OplFiles) {
+		this.OplFiles = OplFiles;
 		
 		types = new ArrayList<OplType>();
 		console = new Console();
@@ -82,19 +83,59 @@ public class OplHeader {
 		headerStart = -1;
 	}
 	
-	public OplHeader(File OplFile, Console console) {
-		this(OplFile);
+	public OplHeader(File[] OplFiles, Console console) {
+		this(OplFiles);
 		
 		this.console = console;
 	}
 	
-	
 	public int extractHeaderInformation() {
-		if (OplFile != null) return extractHeaderInformation(OplFile);
+		if (OplFiles.length > 0) return extractHeaderInformation(OplFiles);
 		else {
 			console.printConsoleErrorLine("Es wurde keine Opl Datei angegeben!", 100);
 			return 100;
 		}
+	}
+	
+	public int extractHeaderInformation(File[] OplFiles) {
+		this.OplFiles = OplFiles;
+		
+		// header informationen resetten
+		fileInformation = "";
+		types = new ArrayList<OplType>();
+		
+		OplHeader workingHeader = new OplHeader(OplFiles, console);
+		for (File f : OplFiles) {
+			int errorcode = workingHeader.extractHeaderInformation(f);
+			
+			// check errorlevel
+			if (errorcode != 0) {
+				console.printConsoleErrorLine("Der Vorgang wurde bei der Datei " + f + " abgebrochen", errorcode);
+				return errorcode;
+			}
+			
+			workingHeader.generateOrder();
+			
+			// wenn f das erste element ist oder die aktuelle Header mit der ausgelesenen übereinstimmt
+			if (fileInformation.equals("") && types.size() == 0) {
+				fileInformation = workingHeader.getFileInformation();
+				types = workingHeader.getTypes();
+			} else if (workingHeader.equals(this)) {
+				console.printConsoleErrorLine("Die folgende Datei stimmt nicht mit den vorherigen überein! Header: " + f, 109);
+				return 109;
+			}
+		}
+		
+		errorStatus = 0;
+		return errorStatus;
+	}
+	
+	public boolean equals(OplHeader header) {
+		if (fileInformation.equals(header.fileInformation) && types.equals(header.getTypes())) {
+			return true;
+		}
+		
+		return false;
 	}
 	
 	public int getTypeIndex(String type) {
@@ -155,8 +196,6 @@ public class OplHeader {
 	 * 
 	 */
 	public int extractHeaderInformation(File OplFile) {
-		this.OplFile = OplFile;
-		
 		// Überprüfe ob die Datei existiert
 		if (!OplFile.exists()) {
 			console.printConsoleErrorLine("Die OPL Datei existiert nicht!", 102);
@@ -293,7 +332,7 @@ public class OplHeader {
 		}
 		
 		errorStatus = 0;
-		return 0;
+		return errorStatus;
 	}
 
 	public int checkErrorStatus() {
@@ -308,12 +347,12 @@ public class OplHeader {
 		return fileInformation;
 	}
 
-	public File getOplFile() {
-		return OplFile;
+	public File[] getOplFile() {
+		return OplFiles;
 	}
 
-	public void setOplFile(File oplFile) {
-		OplFile = oplFile;
+	public void setOplFile(File[] oplFiles) {
+		this.OplFiles = oplFiles;
 		errorStatus = 107;
 	}
 

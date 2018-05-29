@@ -1,6 +1,6 @@
 package classes;
 
-public class OplTypeElement implements Comparable {
+public class OplTypeElement implements Comparable<OplTypeElement> {
 	private String name;
 	private long id;
 	private long value;
@@ -17,8 +17,16 @@ public class OplTypeElement implements Comparable {
 		this("", 0, -1);
 	}
 	
+	public boolean equals(OplTypeElement element) {
+		if (name.equals(element.name) && id == element.id && value == element.value) {
+			return true;
+		}
+		
+		return false;
+	}
+	
 	@Override
-	public int compareTo(Object element) {
+	public int compareTo(OplTypeElement element) {
 		return getOrder() - ((OplTypeElement) element).getOrder();
 	}
 	
