@@ -14,7 +14,7 @@ import classes.OplType;
 class OplHeaderTest {
 	
 	/*
-	 *	WEitere Tests müssen noch durchgeführt werden 
+	 *	Weitere Tests müssen noch durchgeführt werden 
 	 */
 	
 	

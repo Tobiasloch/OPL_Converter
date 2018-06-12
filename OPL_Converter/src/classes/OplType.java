@@ -1,17 +1,20 @@
 package classes;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 
 public class OplType {
 	
 	private String type;
-	private ArrayList<OplTypeElement> elements;
+	private HashMap<String, OplTypeElement> elements;
+	private OplTypeElement activeObject;
 	
 	OplType(String type, OplTypeElement element) {
 		this.type = type;
-		elements = new ArrayList<OplTypeElement>();
+		elements = new HashMap<String, OplTypeElement>();
 		
-		if (element != null) elements.add(element);
+		if (element != null) addElement(element);
 	}
 	
 	OplType(String type) {
@@ -31,7 +34,8 @@ public class OplType {
 	}
 	
 	public void addElement(OplTypeElement element) {
-		this.elements.add(element);
+		this.elements.put(element.getName(), element);
+		activeObject = element;
 	}
 	
 	public void addElement() {
@@ -39,7 +43,7 @@ public class OplType {
 	}
 	
 	public OplTypeElement getActiveElement() {
-		return elements.get(elements.size()-1);
+		return activeObject;
 	}
 	
 	public String getType() {
@@ -48,12 +52,16 @@ public class OplType {
 	public void setType(String type) {
 		this.type = type;
 	}
-
-	public ArrayList<OplTypeElement> getElements() {
-		return elements;
+	
+	public OplTypeElement getElement(String key) {
+		return elements.get(key);
 	}
-
-	public void setElements(ArrayList<OplTypeElement> elements) {
-		this.elements = elements;
+	
+	public Collection<OplTypeElement> getElements() {
+		return elements.values();
+	}
+	
+	public HashMap<String, OplTypeElement> getHash() {
+		return elements;
 	}
 }

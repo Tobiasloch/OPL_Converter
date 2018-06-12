@@ -26,6 +26,13 @@ public class OplTypeElement implements Comparable<OplTypeElement> {
 	}
 	
 	@Override
+	public int hashCode() {
+		int code =  name.hashCode() + (int)id + (int)value;
+		
+		return code;
+	}
+	
+	@Override
 	public int compareTo(OplTypeElement element) {
 		return getOrder() - ((OplTypeElement) element).getOrder();
 	}

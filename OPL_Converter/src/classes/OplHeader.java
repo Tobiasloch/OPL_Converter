@@ -5,6 +5,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +26,8 @@ public class OplHeader {
 	 * 107: Variablen wurden verändert ohne Aufruf der extractHeaderInformation
 	 * 108: Problem mit den Intervallgrenzen der Header Teile
 	 * 109: Header von verschiedenen Dateien stimmen nicht überein
+	 * 110: Header conflict handling wurde verändert und extractHeaderInformation jedoch noch nicht
+	 * 111: conflict handling out of range
 	 * 
 	 * */
 	
@@ -55,13 +60,22 @@ public class OplHeader {
 	public static final int HEADER_SIXTH_END = 402;
 	*/
 	
-	private ArrayList<OplType> types; // Liste die die Opl Typen enthält
+	public static final int DEFAULT_CONFLICT_HANDLING = 0;
+	public static final int[] MIN_MAX_CONFLICT_HANDLING_TYPES = {0, 2};
+	
+	private HashMap<String, OplType> types; // Liste die die Opl Typen enthält
 	private String fileInformation; // Informationen zur Datei. Meistens Ort der Aufnahme bzw. Dateiname
 	
 	private long headerStart;
 	private long headerEnd;
 	
 	private int errorStatus;
+	
+	// Nach welchen verfahren mehrere Header Dateien mit unterschiedlichen Headern behandelt werden sollen
+	// 0: Abbruch bei unterschiedlichen Headern
+	// 1: mit null werten wird gearbeitet
+	// 2: nur gleiche Variablen werden übertragen
+	private int conflictHandling; 
 	
 	private File[] OplFiles; // Datei die ausgelesen werden soll
 	
@@ -74,10 +88,12 @@ public class OplHeader {
 	public OplHeader(File[] OplFiles) {
 		this.OplFiles = OplFiles;
 		
-		types = new ArrayList<OplType>();
+		types = new HashMap<String, OplType>();
 		console = new Console();
 		
 		errorStatus = 106;
+		
+		setConflictHandling(DEFAULT_CONFLICT_HANDLING);
 		
 		headerEnd = -1;
 		headerStart = -1;
@@ -102,7 +118,7 @@ public class OplHeader {
 		
 		// header informationen resetten
 		fileInformation = "";
-		types = new ArrayList<OplType>();
+		types = new HashMap<String, OplType>();
 		
 		OplHeader workingHeader = new OplHeader(OplFiles, console);
 		for (File f : OplFiles) {
@@ -119,10 +135,48 @@ public class OplHeader {
 			// wenn f das erste element ist oder die aktuelle Header mit der ausgelesenen übereinstimmt
 			if (fileInformation.equals("") && types.size() == 0) {
 				fileInformation = workingHeader.getFileInformation();
-				types = workingHeader.getTypes();
-			} else if (workingHeader.equals(this)) {
-				console.printConsoleErrorLine("Die folgende Datei stimmt nicht mit den vorherigen überein! Header: " + f, 109);
-				return 109;
+				types = workingHeader.getHashMapTypes();
+			} else {
+				if (getConflictHandling() == 0) {
+					if (!workingHeader.equals(this)) {
+						console.printConsoleErrorLine("Die folgende Datei stimmt nicht mit den vorherigen überein! Header: " + f, 109);
+						errorStatus = 109;
+						return 109;
+					}
+				} else if (getConflictHandling() == 1) {
+					// bei auftreten einer neuen Variable wird diese hinzugefügt
+					HashMap<String, OplType> workingMap = workingHeader.getHashMapTypes();
+					
+					for (String key : workingMap.keySet()) { // den key von jedem ausgelesenem Typ auslesen
+						OplType t = workingMap.get(key);
+						
+						if (types.containsKey(key)) { // wenn der Typ bereits existeirt, dann dürfen nur noch nicht vorhandene Typen importiert werden
+							HashMap<String, OplTypeElement> workingType = t.getHash();
+							HashMap<String, OplTypeElement> typeHash = types.get(key).getHash();
+
+							typeHash.putAll(workingType);
+						} else {// wenn der Typ noch nicht existiert, dann kann er ohne Konflikte hinzugfefügt werden
+							types.put(key, t);
+						}
+					}
+					
+				} else if (getConflictHandling() == 2) {
+					// bei auftreten einer variable die nicht in allen maps vorkommt, dann wird diese gelöscht
+					HashMap<String, OplType> workingMap = workingHeader.getHashMapTypes();
+					
+					for (String key : types.keySet()) { // den key von jedem ausgelesenem Typ auslesen
+						if (workingMap.containsKey(key)) { // wenn der Typ bereits existeirt, dann wird überprüft ob er auch im workinHeader vorkommt, sonst wird er gelöscht
+							HashMap<String, OplTypeElement> typeHash = types.get(key).getHash();
+							HashMap<String, OplTypeElement> t = workingMap.get(key).getHash();
+							
+							for (String elemKey : typeHash.keySet()) {
+								if (!t.containsKey(elemKey)) typeHash.remove(elemKey);
+							}
+						} else {
+							types.remove(key);
+						}
+					}
+				}
 			}
 		}
 		
@@ -131,7 +185,7 @@ public class OplHeader {
 	}
 	
 	public boolean equals(OplHeader header) {
-		if (fileInformation.equals(header.fileInformation) && types.equals(header.getTypes())) {
+		if (fileInformation.equals(header.fileInformation) && types.equals(header.getHashMapTypes())) {
 			return true;
 		}
 		
@@ -140,7 +194,7 @@ public class OplHeader {
 	
 	public int getTypeIndex(String type) {
 		int index = 0;
-		for (OplType item : types) {
+		for (OplType item : types.values()) {
 			if (type.equals(item.getType())) {
 				return index;
 			}
@@ -170,7 +224,7 @@ public class OplHeader {
 	public ArrayList<OplTypeElement> getAllElements(){
 		ArrayList<OplTypeElement> elements = new ArrayList<OplTypeElement>();
 		
-		for (OplType item : types) {
+		for (OplType item : types.values()) {
 			for (OplTypeElement element : item.getElements()) {
 				elements.add(element);
 			}
@@ -180,11 +234,7 @@ public class OplHeader {
 	}
 	
 	public OplType getType(String type) {
-		int index = getTypeIndex(type);
-		
-		if (index < 0) return null;
-		
-		return types.get(index);
+		return types.get(type);
 	}
 	
 	/**
@@ -299,7 +349,8 @@ public class OplHeader {
 					
 					if (typeObject == null) {
 						typeObject = new OplType(type);
-						types.add(typeObject);
+	
+						types.put(typeObject.getType(), typeObject);
 					}
 					
 					element.setType(typeObject);
@@ -339,7 +390,11 @@ public class OplHeader {
 		return errorStatus;
 	}
 	
-	public ArrayList<OplType> getTypes() {
+	public Collection<OplType> getTypes() {
+		return (ArrayList<OplType>) types.values();
+	}
+	
+	public HashMap<String, OplType> getHashMapTypes() {
 		return types;
 	}
 
@@ -370,5 +425,18 @@ public class OplHeader {
 	
 	public long getHeaderStart() {
 		return headerStart;
+	}
+
+	public int getConflictHandling() {
+		return conflictHandling;
+	}
+
+	public void setConflictHandling(int conflictHandling) {
+		if (conflictHandling < MIN_MAX_CONFLICT_HANDLING_TYPES[0] || conflictHandling > MIN_MAX_CONFLICT_HANDLING_TYPES[1]) {
+			console.printConsoleError("Das angegebene Konflikt Verhalten existiert nicht!", 111);
+			return;
+		}
+		this.conflictHandling = conflictHandling;
+		this.errorStatus = 110;
 	}
 }

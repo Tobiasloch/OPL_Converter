@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
 import java.awt.event.ActionEvent;
 import java.awt.Color;
 
@@ -82,11 +84,17 @@ public class mainWindow extends JFrame {
 	private JTable table;
 	private DefaultTableModel tableModel;
 	
+	// welche delimiter verwendet werden sollen
 	private JRadioButton rdbtnTabstop;
 	private JRadioButton rdbtnComma;
 	private JRadioButton rdbtnSpace;
 	private JRadioButton rdbtnSemicolon;
 	private JRadioButton rdbtnAndere;
+	
+	// conflict behavior radio buttons
+	private JRadioButton rdbtnTerminateProcess;
+	private JRadioButton rdbtnNULLValue;
+	private JRadioButton rdbtnSameVariablesOnly;
 	
 	OplHeader header = new OplHeader();
 	convertOPL oplConverter = new convertOPL();
@@ -215,16 +223,28 @@ public class mainWindow extends JFrame {
 				table.setModel(tableModel);
 				
 				header = new OplHeader(files, console);
+				// den conflict Typ bestimmen
+				header.setConflictHandling(getConflictHandling());
+	
+				int errorcode = header.extractHeaderInformation();
 				
-				header.extractHeaderInformation();
-				for (OplType item : header.getTypes()) {
+				if (errorcode != 0) {
+					console.printConsoleErrorLine("Es gab ein Problem beim Tabellen rendern!", errorcode);
+					return;
+				}
+				
+				for (String key : header.getHashMapTypes().keySet()) {
+					OplType item = header.getHashMapTypes().get(key);
+					
 					if (!chckbxTypenInReihenkpfe.isSelected()) tableModel.addColumn(item.getType());
 					
 					if (item.getElements().size() > 0) {
 						int activeCol = tableModel.getColumnCount()-1;
 						
 						int activeRow = 0;
-						for (OplTypeElement elem : item.getElements()) {
+						for (String elemKey : item.getHash().keySet()) {
+							OplTypeElement elem = item.getHash().get(elemKey);
+							
 							String text = elem.getName() + "(" + elem.getId() + ")";
 							
 							if (activeRow >= tableModel.getRowCount()) {
@@ -296,7 +316,7 @@ public class mainWindow extends JFrame {
 			@Override
 			public void columnMoved(TableColumnModelEvent e) {
 				if (e.getToIndex() != e.getFromIndex()) {
-					Collections.swap(header.getTypes(), e.getFromIndex(), e.getToIndex());
+					Collections.swap((List<OplType>) header.getTypes(), e.getFromIndex(), e.getToIndex());
 				}
 			}
 			
@@ -454,6 +474,35 @@ public class mainWindow extends JFrame {
 		});
 		dateFormatPanel.add(btnNewButton, BorderLayout.EAST);
 		
+		JPanel headerConflictPanel = new JPanel();
+		mainSettingsPanel.addTab("Header Konflikte", null, headerConflictPanel, null);
+		headerConflictPanel.setLayout(new BorderLayout(0, 0));
+		
+		JLabel lblConflictDesctiption = new JLabel("Verhalten beim bearbeiten von unterschiedlichen Headerbl\u00F6cken");
+		headerConflictPanel.add(lblConflictDesctiption, BorderLayout.NORTH);
+		
+		JPanel selectBehaviorPanel = new JPanel();
+		headerConflictPanel.add(selectBehaviorPanel, BorderLayout.CENTER);
+		selectBehaviorPanel.setLayout(new GridLayout(0, 1));
+		
+		rdbtnTerminateProcess = new JRadioButton("Vorgang abbrechen");
+		rdbtnTerminateProcess.setSelected(true);
+		selectBehaviorPanel.add(rdbtnTerminateProcess);
+		
+		rdbtnNULLValue = new JRadioButton("Bei Bl\u00F6cken, welche eine Variable nicht beinhalten wird ein NULL Wert angegeben");
+		selectBehaviorPanel.add(rdbtnNULLValue);
+		
+		rdbtnSameVariablesOnly = new JRadioButton("Nur gemeinsame Variablen werden angezeigt und \u00FCbertragen");
+		selectBehaviorPanel.add(rdbtnSameVariablesOnly);
+		
+		// add radiobuttons to their group
+		ButtonGroup behaviorGroup = new ButtonGroup();
+		behaviorGroup.add(rdbtnNULLValue);
+		behaviorGroup.add(rdbtnSameVariablesOnly);
+		behaviorGroup.add(rdbtnTerminateProcess);
+		
+		mainSettingsPanel.setSelectedIndex(2);
+		
 		JPanel startArea = new JPanel();
 		
 		splitPane_1.setRightComponent(startArea);
@@ -596,4 +645,13 @@ public class mainWindow extends JFrame {
 
 	    return result;
 	  }
+	
+	public int getConflictHandling() {
+		if (rdbtnTerminateProcess.isSelected()) return 0;
+		else if (rdbtnNULLValue.isSelected()) return 1;
+		else if (rdbtnSameVariablesOnly.isSelected()) return 2;
+		
+		return -1;
+		
+	}
 }
