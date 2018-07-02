@@ -1,49 +1,76 @@
 package classes;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public class OplType {
 	
 	private String type;
-	private HashMap<String, OplTypeElement> elements;
-	private OplTypeElement activeObject;
+	private int position;
+	private LinkedHashMap<Long, OplTypeElement> elements;
+	private HashMap<Integer, OplTypeElement> order;
 	
-	OplType(String type, OplTypeElement element) {
+	OplType(String type, int position, OplTypeElement element) {
 		this.type = type;
-		elements = new HashMap<String, OplTypeElement>();
+		elements = new LinkedHashMap<Long, OplTypeElement>();
+		
+		this.setPosition(position);
+		order = new HashMap<Integer, OplTypeElement>();
 		
 		if (element != null) addElement(element);
 	}
 	
+	OplType(String type, int position) {
+		this(type, position, null);
+	}
+	
 	OplType(String type) {
-		this(type, null);
+		this(type, -1);
 	}
 	
 	OplType() {
 		this("");
 	}
 	
-	public boolean equals(OplType type) {
-		if (type.equals(type)) {
+	@Override
+	public boolean equals(Object object) {
+		if (object == null || !(object instanceof OplType)) return false;
+		
+		OplType type = (OplType) object;
+		
+		if (this.type.equals(type.getType())) {
 			if (elements.equals(type.elements)) return true;
 		}
 		
 		return false;
 	}
 	
+	public void swapTypes(OplTypeElement a, OplTypeElement b) {
+		order.put(b.getPosition(), a);
+		order.put(a.getPosition(), b);
+		
+		int pos = b.getPosition();
+		
+		b.setPosition(a.getPosition());
+		a.setPosition(pos);
+	}
+
+	public void swapTypes(int a, int b) {
+		swapTypes(order.get(a), order.get(b));
+	}
+	
 	public void addElement(OplTypeElement element) {
-		this.elements.put(element.getName(), element);
-		activeObject = element;
+		elements.put(element.getId(), element);
+		order.put(order.size(), element);
 	}
 	
 	public void addElement() {
 		addElement(new OplTypeElement());
 	}
 	
-	public OplTypeElement getActiveElement() {
-		return activeObject;
+	public void removeElement(OplTypeElement elem) {
+		elements.remove(elem.getId());
 	}
 	
 	public String getType() {
@@ -53,15 +80,27 @@ public class OplType {
 		this.type = type;
 	}
 	
-	public OplTypeElement getElement(String key) {
+	public OplTypeElement getElement(long key) {
 		return elements.get(key);
 	}
 	
-	public Collection<OplTypeElement> getElements() {
-		return elements.values();
+	public ArrayList<OplTypeElement> getElements() {
+		ArrayList<OplTypeElement> list = new ArrayList<OplTypeElement>();
+		
+		for (long key : elements.keySet()) list.add(elements.get(key));
+		
+		return list;
 	}
 	
-	public HashMap<String, OplTypeElement> getHash() {
+	public LinkedHashMap<Long, OplTypeElement> getHash() {
 		return elements;
+	}
+
+	public int getPosition() {
+		return position;
+	}
+
+	public void setPosition(int position) {
+		this.position = position;
 	}
 }

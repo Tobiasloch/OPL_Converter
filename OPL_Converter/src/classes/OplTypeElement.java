@@ -3,21 +3,26 @@ package classes;
 public class OplTypeElement implements Comparable<OplTypeElement> {
 	private String name;
 	private long id;
-	private long value;
+	private String value;
 	private OplType type;
 	
-	private int order;
+	private int position;
 	
-	OplTypeElement(String name, long id, int order) {
+	OplTypeElement(String name, long id) {
 		this.name = name;
 		this.id = id;
 	}
 	
 	OplTypeElement() {
-		this("", 0, -1);
+		this("", 0);
 	}
 	
-	public boolean equals(OplTypeElement element) {
+	@Override
+	public boolean equals(Object object) {
+		if (object == null || !(object instanceof OplTypeElement)) return false;
+		
+		OplTypeElement element = (OplTypeElement) object;
+		
 		if (name.equals(element.name) && id == element.id && value == element.value) {
 			return true;
 		}
@@ -27,14 +32,14 @@ public class OplTypeElement implements Comparable<OplTypeElement> {
 	
 	@Override
 	public int hashCode() {
-		int code =  name.hashCode() + (int)id + (int)value;
+		int code =  name.hashCode() + (int)id + value.hashCode();
 		
 		return code;
 	}
 	
 	@Override
 	public int compareTo(OplTypeElement element) {
-		return getOrder() - ((OplTypeElement) element).getOrder();
+		return getPosition() - ((OplTypeElement) element).getPosition();
 	}
 	
 	@Override
@@ -63,19 +68,19 @@ public class OplTypeElement implements Comparable<OplTypeElement> {
 		this.type = type;
 	}
 
-	public long getValue() {
+	public String getValue() {
 		return value;
 	}
 
-	public void setValue(long value) {
+	public void setValue(String value) {
 		this.value = value;
 	}
 
-	public int getOrder() {
-		return order;
+	public int getPosition() {
+		return position;
 	}
 
-	public void setOrder(int order) {
-		this.order = order;
+	public void setPosition(int order) {
+		this.position = order;
 	}
 }

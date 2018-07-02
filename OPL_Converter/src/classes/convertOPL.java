@@ -123,10 +123,15 @@ public class convertOPL {
 		// gehe jede einzelne opl datei durch
 		int fileCount = 0;
 		for (File oplFile : header.getOplFile()) {
-			if (fileCount != 0) outputFile = new File(outputFile.getPath() + " - " + fileCount);
+			if (fileCount != 0) {
+				String filePath = outputFile.getParent() + "\\" + getFileWithoutExtenstion(outputFile);
+				String fileExtension = getFileExtension(outputFile);
+				
+				outputFile = new File(filePath + " - " + fileCount + "." + fileExtension);
+			}
 			
 			// creating monitor
-			ProgressMonitor monitor = new ProgressMonitor(mainFrame, "Vorgang wird ausgeführt...", "", 0, 100);
+			ProgressMonitor monitor = new ProgressMonitor(mainFrame, "Datei " + (fileCount+1) + " wird umgewandelt...", "", 0, 100);
 			long progress = 0;
 			long fileSize = oplFile.length();
 			
@@ -168,10 +173,8 @@ public class convertOPL {
 				ArrayList<OplTypeElement> blockElements;
 				
 				// jump to end of header
-				for(; linecounter < header.getHeaderEnd()+1; linecounter++) br.readLine();
-				
-				// generates an order in the header elements, so that it can be sorted
-				header.generateOrder();
+				long[] headerEnd = header.getHeaderEnd();
+				for(; linecounter < headerEnd[fileCount]+1; linecounter++) br.readLine();
 				
 				// writing first line
 				// first to columns not types
@@ -204,7 +207,7 @@ public class convertOPL {
 					// set up elements in line
 					blockElements = new ArrayList<OplTypeElement>();
 					
-					// schleife geht solange wie die datei nicht leer ist und keine header gefunden wird
+					// schleife geht solange wie die datei nicht leer ist und keine weitere headerzeile gefunden wird
 					while (!blockHeaderMatcher.find() && line!= null) {
 						Matcher blockElementMatcher = blockElementPattern.matcher(line);
 	
@@ -215,7 +218,7 @@ public class convertOPL {
 							if (elementTime == headerTime) {
 								// extract id and value
 								long id = Long.parseLong(blockElementMatcher.group(2));
-								long value = Long.parseLong(blockElementMatcher.group(3));
+								String value = String.valueOf(Long.parseLong(blockElementMatcher.group(3)));
 								
 								OplTypeElement element = header.getElementFromId(id);
 								if (element != null) {
@@ -246,6 +249,19 @@ public class convertOPL {
 						monitor.setProgress(getProgressinPercent(progress, fileSize));
 						monitor.setNote("Fortschritt: " + progress/1000 + "/" + fileSize/1000);
 					}
+					
+					// wenn das conflict behavior von opl header auf 1 also Mit Null werten gesetzt wird, 
+					// dann werden alle noch nicht gefundenen Types eingefügt und mit null werten versehen
+					if (header.getConflictHandling() == OplHeader.USE_NULL_VALUES) {
+						ArrayList<OplTypeElement> comp = AComplementsB(header.getAllElements(), blockElements);
+						
+						for (OplTypeElement elem : comp) {
+							elem.setValue(header.getNullValue());
+							
+							blockElements.add(elem);
+						}
+					}
+					
 					
 					// wenn der Block zu ende ist, dann wird er ausgegeben
 					Collections.sort(blockElements);
@@ -285,6 +301,31 @@ public class convertOPL {
 		if (!idsNotFound.equals("")) {
 			console.printConsoleErrorLine("In folgenden Zeilen wurde die ID nicht erkannt: " + idsNotFound, 205);
 		}
+	}
+	
+	private ArrayList<OplTypeElement> AComplementsB(ArrayList<OplTypeElement> A, ArrayList<OplTypeElement> B) {
+		ArrayList<OplTypeElement> result = new ArrayList<OplTypeElement>(A);
+		result.removeAll(B);
+		
+		return result;
+	}
+	
+	private static String getFileExtension(File file) {
+        String fileName = file.getName();
+        
+        if(fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0)
+        	return fileName.substring(fileName.lastIndexOf(".")+1);
+        
+        return "";
+    }
+	
+	private static String getFileWithoutExtenstion(File file) {
+		String fileName = file.getName();
+		
+		if(fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0) 
+			return fileName.substring(0, fileName.lastIndexOf("."));
+	    
+		return fileName;
 	}
 	
 	private int getProgressinPercent(long start, long end)  {

@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.awt.event.ActionEvent;
 import java.awt.Color;
 
@@ -106,6 +107,7 @@ public class mainWindow extends JFrame {
 	
 	JList<String> inputList;
 	addInput addInput;
+	private JTextField NullValue;
 	
 	public mainWindow() {
 		setTitle("OPL Converter");
@@ -238,11 +240,11 @@ public class mainWindow extends JFrame {
 					
 					if (!chckbxTypenInReihenkpfe.isSelected()) tableModel.addColumn(item.getType());
 					
-					if (item.getElements().size() > 0) {
+					if (item.getHash().size() > 0) {
 						int activeCol = tableModel.getColumnCount()-1;
 						
 						int activeRow = 0;
-						for (String elemKey : item.getHash().keySet()) {
+						for (Long elemKey : item.getHash().keySet()) {
 							OplTypeElement elem = item.getHash().get(elemKey);
 							
 							String text = elem.getName() + "(" + elem.getId() + ")";
@@ -316,7 +318,7 @@ public class mainWindow extends JFrame {
 			@Override
 			public void columnMoved(TableColumnModelEvent e) {
 				if (e.getToIndex() != e.getFromIndex()) {
-					Collections.swap((List<OplType>) header.getTypes(), e.getFromIndex(), e.getToIndex());
+					header.swapTypes(e.getFromIndex(), e.getToIndex());
 				}
 			}
 			
@@ -424,8 +426,7 @@ public class mainWindow extends JFrame {
 		JLabel lblAndere = new JLabel("Andere:");
 		checkBoxPanel.add(lblAndere);
 		
-		chckbxTypenInReihenkpfe = new JCheckBox("Typen in Reihenk\u00F6pfe");
-		chckbxTypenInReihenkpfe.setEnabled(false);
+		chckbxTypenInReihenkpfe = new JCheckBox("in eine Datei exportieren");
 		checkBoxPanel.add(chckbxTypenInReihenkpfe);
 		
 		JTabbedPane mainSettingsPanel = new JTabbedPane(JTabbedPane.TOP);
@@ -489,17 +490,28 @@ public class mainWindow extends JFrame {
 		rdbtnTerminateProcess.setSelected(true);
 		selectBehaviorPanel.add(rdbtnTerminateProcess);
 		
-		rdbtnNULLValue = new JRadioButton("Bei Bl\u00F6cken, welche eine Variable nicht beinhalten wird ein NULL Wert angegeben");
-		selectBehaviorPanel.add(rdbtnNULLValue);
+		JPanel NullValuePanel = new JPanel();
+		selectBehaviorPanel.add(NullValuePanel);
+		NullValuePanel.setLayout(new BorderLayout(0, 0));
+		
+		rdbtnNULLValue = new JRadioButton("Nicht vorhandene Variablen werden folgenderma\u00DFen bef\u00FCllt:");
+		NullValuePanel.add(rdbtnNULLValue);
+		
+		
+		NullValue = new JTextField();
+		NullValue.setHorizontalAlignment(JTextField.CENTER);
+		NullValue.setText(OplHeader.DEFAULT_NULL_VALUE);
+		NullValuePanel.add(NullValue, BorderLayout.EAST);
+		NullValue.setColumns(5);
 		
 		rdbtnSameVariablesOnly = new JRadioButton("Nur gemeinsame Variablen werden angezeigt und \u00FCbertragen");
 		selectBehaviorPanel.add(rdbtnSameVariablesOnly);
 		
 		// add radiobuttons to their group
 		ButtonGroup behaviorGroup = new ButtonGroup();
-		behaviorGroup.add(rdbtnNULLValue);
 		behaviorGroup.add(rdbtnSameVariablesOnly);
 		behaviorGroup.add(rdbtnTerminateProcess);
+		behaviorGroup.add(rdbtnNULLValue);
 		
 		mainSettingsPanel.setSelectedIndex(2);
 		
@@ -564,6 +576,7 @@ public class mainWindow extends JFrame {
 						}
 					}
 					// setting up converter
+					header.setNullValue(NullValue.getText());
 					oplConverter = new convertOPL(header, outputFile, console, getSelectedDelimiter(), dateFormatField.getText());
 					oplConverter.setMainFrame(mainFrame);
 					

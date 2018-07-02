@@ -1,4 +1,5 @@
 package classes;
+
 import javax.swing.UIManager;
 
 public class mainClass {
